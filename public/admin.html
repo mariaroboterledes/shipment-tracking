@@ -1,170 +1,322 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Admin Panel | Shipment Tracking</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Dashboard | Shipment Tracking</title>
   <style>
-    body { font-family: Arial, sans-serif; background:#f5f6f8; padding:20px; }
-    .box {
-      max-width:900px; margin:auto; background:#fff; padding:20px;
-      border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08);
+    :root{
+      --bg:#f5f6f8; --card:#fff; --text:#111; --muted:#666;
+      --danger:#b00020; --ok:#0a7a0a; --line:#e9e9ee; --btn:#111;
+      --radius:14px;
     }
-    h2 { margin-top:0; }
-    input, textarea, button {
-      width:100%; padding:12px; font-size:15px; margin-top:6px;
+    body{ font-family: Arial, sans-serif; background:var(--bg); margin:0; padding:22px; color:var(--text); }
+    .wrap{ max-width:980px; margin:auto; }
+    .card{
+      background:var(--card); border:1px solid var(--line);
+      border-radius:var(--radius); padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.06);
     }
-    button {
-      background:#222; color:#fff; border:none; border-radius:6px;
-      cursor:pointer;
+    h1{ margin:0 0 6px; font-size:22px; }
+    h2{ margin:18px 0 10px; font-size:18px; }
+    p{ margin:6px 0; color:var(--muted); }
+    label{ display:block; margin-top:10px; font-weight:600; font-size:13px; }
+    input, textarea{
+      width:100%; padding:11px 12px; margin-top:6px;
+      border:1px solid var(--line); border-radius:10px; font-size:14px;
+      background:#fff;
     }
-    button:hover { opacity:.9; }
-    .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .msg { margin-top:10px; }
-    .err { color:#b00020; }
-    .ok { color:#0a7a0a; }
-    hr { margin:25px 0; }
+    textarea{ resize:vertical; }
+    .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    button{
+      background:var(--btn); color:#fff; border:none; border-radius:10px;
+      padding:11px 14px; cursor:pointer; font-weight:700; font-size:14px;
+    }
+    button.secondary{ background:#fff; color:#111; border:1px solid var(--line); }
+    button:disabled{ opacity:.6; cursor:not-allowed; }
+    .msg{ margin-top:10px; font-size:14px; }
+    .err{ color:var(--danger); }
+    .ok{ color:var(--ok); }
+    .divider{ height:1px; background:var(--line); margin:18px 0; }
+    .badge{
+      display:inline-block; padding:4px 10px; border-radius:999px;
+      background:#eee; font-size:12px; color:#333;
+    }
+    .box{
+      border:1px dashed var(--line); border-radius:12px; padding:12px; background:#fafafa;
+      margin-top:10px;
+    }
+    code{ background:#f1f1f1; padding:2px 6px; border-radius:6px; }
+    .small{ font-size:12px; color:var(--muted); }
   </style>
 </head>
 <body>
+  <div class="wrap">
+    <div class="card">
+      <h1>🔐 Admin Dashboard</h1>
+      <p>Manage shipments: create tracking IDs and add status updates.</p>
 
-<div class="box">
+      <!-- LOGIN -->
+      <div id="loginBox" class="box">
+        <h2>Login</h2>
+        <p class="small">Use your admin username & password.</p>
 
-  <h2>🔐 Shipment Tracking – Admin Panel</h2>
+        <div class="grid2">
+          <div>
+            <label>Username</label>
+            <input id="username" placeholder="admin" autocomplete="username" />
+          </div>
+          <div>
+            <label>Password</label>
+            <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" />
+          </div>
+        </div>
 
-  <!-- LOGIN -->
-  <div id="loginBox">
-    <h3>Admin Login</h3>
-
-    <label>Email</label>
-    <input id="email" placeholder="admin@company.com">
-
-    <label>Password</label>
-    <input id="password" type="password">
-
-    <button onclick="login()">Login</button>
-    <div id="loginMsg" class="msg"></div>
-  </div>
-
-  <!-- PANEL -->
-  <div id="panel" style="display:none;">
-    <hr>
-
-    <h3>➕ Create New Shipment</h3>
-    <div class="row">
-      <div>
-        <label>Tracking ID</label>
-        <input id="new_tid" placeholder="MR-2026-001">
+        <div class="row" style="margin-top:12px;">
+          <button id="loginBtn">Login</button>
+          <span id="loginMsg" class="msg"></span>
+        </div>
       </div>
-      <div>
-        <label>Initial Status</label>
-        <input id="new_status" placeholder="Order received">
+
+      <!-- PANEL -->
+      <div id="panel" style="display:none;">
+        <div class="divider"></div>
+
+        <h2>➕ Create New Shipment</h2>
+        <div class="grid2">
+          <div>
+            <label>Tracking ID</label>
+            <input id="new_tid" placeholder="MR-2026-001" />
+          </div>
+          <div>
+            <label>Initial Status</label>
+            <input id="new_status" placeholder="Order received" />
+          </div>
+        </div>
+
+        <label>Note (optional)</label>
+        <textarea id="new_note" rows="3" placeholder="Example: Prepared and handed to carrier"></textarea>
+
+        <div class="row" style="margin-top:12px;">
+          <button id="createBtn">Create</button>
+          <button class="secondary" id="copyCreateLinkBtn" disabled>Copy Customer Link</button>
+          <span id="createMsg" class="msg"></span>
+        </div>
+
+        <div id="createdLinkBox" class="box" style="display:none;">
+          <div class="row" style="justify-content:space-between;">
+            <div>
+              <div class="small">Customer tracking link:</div>
+              <div><code id="createdLink"></code></div>
+            </div>
+            <div class="row">
+              <span class="badge">Share with customer</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <h2>🔄 Add Update to Shipment</h2>
+        <div class="grid2">
+          <div>
+            <label>Tracking ID</label>
+            <input id="up_tid" placeholder="MR-2026-001" />
+          </div>
+          <div>
+            <label>New Status</label>
+            <input id="up_status" placeholder="Left warehouse" />
+          </div>
+        </div>
+
+        <label>Note (optional)</label>
+        <textarea id="up_note" rows="3" placeholder="Example: Delivered to DHL"></textarea>
+
+        <div class="row" style="margin-top:12px;">
+          <button id="updateBtn">Add Update</button>
+          <span id="updateMsg" class="msg"></span>
+        </div>
+
+        <div class="divider"></div>
+
+        <h2>🔎 Quick Tools</h2>
+        <div class="box">
+          <p class="small">
+            Tip: After creating a shipment, open the customer link in a new tab to verify the status.
+          </p>
+          <div class="row">
+            <input id="quick_tid" placeholder="Enter Tracking ID to build customer link" style="flex:1; min-width:260px;">
+            <button class="secondary" id="buildLinkBtn">Build Link</button>
+            <button class="secondary" id="copyQuickLinkBtn" disabled>Copy</button>
+          </div>
+          <div style="margin-top:10px; display:none;" id="quickLinkBox">
+            <div class="small">Generated link:</div>
+            <div><code id="quickLink"></code></div>
+          </div>
+        </div>
       </div>
+
     </div>
-
-    <label>Note</label>
-    <textarea id="new_note" rows="3"></textarea>
-
-    <button onclick="createShipment()">Create Shipment</button>
-
-    <hr>
-
-    <h3>🔄 Add Shipment Update</h3>
-    <div class="row">
-      <div>
-        <label>Tracking ID</label>
-        <input id="up_tid" placeholder="MR-2026-001">
-      </div>
-      <div>
-        <label>New Status</label>
-        <input id="up_status" placeholder="Left warehouse">
-      </div>
-    </div>
-
-    <label>Note</label>
-    <textarea id="up_note" rows="3"></textarea>
-
-    <button onclick="addUpdate()">Add Update</button>
-
-    <div id="panelMsg" class="msg"></div>
   </div>
-
-</div>
 
 <script>
-async function login(){
-  const msg = document.getElementById('loginMsg');
-  msg.textContent = 'Checking credentials...';
+  // Base URL automatically uses current domain (best practice)
+  const BASE_URL = window.location.origin;
 
-  try{
-    const res = await fetch('/api/admin/login',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        email:document.getElementById('email').value,
-        password:document.getElementById('password').value
-      })
-    });
+  const loginBtn = document.getElementById('loginBtn');
+  const loginMsg = document.getElementById('loginMsg');
 
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error || 'Login failed');
+  const panel = document.getElementById('panel');
+  const loginBox = document.getElementById('loginBox');
 
-    document.getElementById('loginBox').style.display='none';
-    document.getElementById('panel').style.display='block';
-    msg.textContent='';
-  }catch(e){
-    msg.innerHTML = `<span class="err">${e.message}</span>`;
+  const createBtn = document.getElementById('createBtn');
+  const createMsg = document.getElementById('createMsg');
+  const copyCreateLinkBtn = document.getElementById('copyCreateLinkBtn');
+  const createdLinkBox = document.getElementById('createdLinkBox');
+  const createdLinkEl = document.getElementById('createdLink');
+
+  const updateBtn = document.getElementById('updateBtn');
+  const updateMsg = document.getElementById('updateMsg');
+
+  const buildLinkBtn = document.getElementById('buildLinkBtn');
+  const copyQuickLinkBtn = document.getElementById('copyQuickLinkBtn');
+  const quickTid = document.getElementById('quick_tid');
+  const quickLinkBox = document.getElementById('quickLinkBox');
+  const quickLinkEl = document.getElementById('quickLink');
+
+  function setMsg(el, text, type){
+    el.className = 'msg ' + (type || '');
+    el.textContent = text || '';
   }
-}
 
-async function createShipment(){
-  const msg = document.getElementById('panelMsg');
-  msg.textContent='Creating shipment...';
+  async function login(){
+    setMsg(loginMsg, 'Checking credentials...', '');
 
-  try{
-    const res = await fetch('/api/admin/create',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        trackingId:document.getElementById('new_tid').value,
-        status:document.getElementById('new_status').value,
-        note:document.getElementById('new_note').value
-      })
-    });
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
 
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error);
+    try{
+      const res = await fetch('/api/admin/login', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email: username, password })
+      });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data?.error || 'Login failed');
 
-    msg.innerHTML = `<span class="ok">✅ Shipment created successfully</span>`;
-  }catch(e){
-    msg.innerHTML = `<span class="err">${e.message}</span>`;
+      // Show panel
+      loginBox.style.display = 'none';
+      panel.style.display = 'block';
+      setMsg(loginMsg, '', '');
+    }catch(e){
+      setMsg(loginMsg, e.message, 'err');
+    }
   }
-}
 
-async function addUpdate(){
-  const msg = document.getElementById('panelMsg');
-  msg.textContent='Adding update...';
-
-  try{
-    const res = await fetch('/api/admin/update',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        trackingId:document.getElementById('up_tid').value,
-        status:document.getElementById('up_status').value,
-        note:document.getElementById('up_note').value
-      })
-    });
-
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error);
-
-    msg.innerHTML = `<span class="ok">✅ Update added successfully</span>`;
-  }catch(e){
-    msg.innerHTML = `<span class="err">${e.message}</span>`;
+  function buildCustomerLink(trackingId){
+    return `${BASE_URL}/track.html?tid=${encodeURIComponent(trackingId)}`;
   }
-}
+
+  async function createShipment(){
+    setMsg(createMsg, 'Creating shipment...', '');
+    copyCreateLinkBtn.disabled = true;
+    createdLinkBox.style.display = 'none';
+
+    const trackingId = document.getElementById('new_tid').value.trim();
+    const status = document.getElementById('new_status').value.trim();
+    const note = document.getElementById('new_note').value.trim();
+
+    try{
+      const res = await fetch('/api/admin/create', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ trackingId, status, note })
+      });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data?.error || 'Create failed');
+
+      const link = buildCustomerLink(trackingId);
+      createdLinkEl.textContent = link;
+      createdLinkBox.style.display = 'block';
+      copyCreateLinkBtn.disabled = false;
+
+      setMsg(createMsg, '✅ Shipment created successfully', 'ok');
+    }catch(e){
+      setMsg(createMsg, e.message, 'err');
+    }
+  }
+
+  async function addUpdate(){
+    setMsg(updateMsg, 'Adding update...', '');
+
+    const trackingId = document.getElementById('up_tid').value.trim();
+    const status = document.getElementById('up_status').value.trim();
+    const note = document.getElementById('up_note').value.trim();
+
+    try{
+      const res = await fetch('/api/admin/update', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ trackingId, status, note })
+      });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data?.error || 'Update failed');
+
+      setMsg(updateMsg, '✅ Update added successfully', 'ok');
+    }catch(e){
+      setMsg(updateMsg, e.message, 'err');
+    }
+  }
+
+  async function copyText(text){
+    try{
+      await navigator.clipboard.writeText(text);
+      return true;
+    }catch(_){
+      return false;
+    }
+  }
+
+  // Quick link builder
+  function buildQuickLink(){
+    const tid = quickTid.value.trim();
+    if(!tid){
+      quickLinkBox.style.display='none';
+      copyQuickLinkBtn.disabled = true;
+      return;
+    }
+    const link = buildCustomerLink(tid);
+    quickLinkEl.textContent = link;
+    quickLinkBox.style.display='block';
+    copyQuickLinkBtn.disabled = false;
+  }
+
+  loginBtn.addEventListener('click', login);
+  createBtn.addEventListener('click', createShipment);
+  updateBtn.addEventListener('click', addUpdate);
+
+  copyCreateLinkBtn.addEventListener('click', async () => {
+    const ok = await copyText(createdLinkEl.textContent);
+    setMsg(createMsg, ok ? '✅ Customer link copied' : '❌ Copy failed (browser blocked)', ok ? 'ok' : 'err');
+  });
+
+  buildLinkBtn.addEventListener('click', () => {
+    buildQuickLink();
+    setMsg(updateMsg, '', '');
+    setMsg(createMsg, '', '');
+  });
+
+  copyQuickLinkBtn.addEventListener('click', async () => {
+    const ok = await copyText(quickLinkEl.textContent);
+    setMsg(updateMsg, ok ? '✅ Link copied' : '❌ Copy failed', ok ? 'ok' : 'err');
+  });
+
+  // Enter = trigger relevant actions
+  document.getElementById('password').addEventListener('keydown', e => { if(e.key === 'Enter') login(); });
+  document.getElementById('new_note').addEventListener('keydown', e => { if(e.ctrlKey && e.key === 'Enter') createShipment(); });
+  document.getElementById('up_note').addEventListener('keydown', e => { if(e.ctrlKey && e.key === 'Enter') addUpdate(); });
+
 </script>
-
 </body>
 </html>
+
