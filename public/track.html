@@ -1,64 +1,99 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>تتبع الشحنة | Maria Roboter</title>
+  <title>Track Your Shipment</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: Arial, sans-serif; background:#f6f7f9; padding:20px; }
-    .box { max-width:700px; margin:auto; background:#fff; padding:20px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08); }
-    input, button { padding:12px; font-size:16px; }
-    input { width:70%; }
-    button { cursor:pointer; }
-    .row { display:flex; gap:10px; flex-wrap:wrap; }
-    .status { margin-top:20px; padding:12px; border-radius:8px; background:#f1f1f1; }
+    body { font-family: Arial, sans-serif; background:#f5f6f8; padding:20px; }
+    .box {
+      max-width:800px; margin:auto; background:#fff; padding:20px;
+      border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08);
+    }
+    input, button {
+      padding:12px; font-size:15px; width:100%;
+    }
+    button {
+      background:#222; color:#fff; border:none;
+      border-radius:6px; cursor:pointer;
+    }
+    button:hover { opacity:.9; }
+    .timeline { margin-top:20px; }
+    .item { padding:10px 0; border-bottom:1px dashed #ddd; }
+    .badge {
+      background:#eee; padding:4px 10px; border-radius:20px;
+    }
     .err { color:#b00020; }
   </style>
 </head>
 <body>
 
 <div class="box">
-  <h2>🔍 تتبع الشحنة</h2>
-  <p>أدخل رقم التتبع الخاص بك:</p>
+  <h2>📦 Track Your Shipment</h2>
+  <p>Enter your tracking number below:</p>
 
-  <div class="row">
-    <input id="tid" placeholder="MR-2026-001">
-    <button onclick="track()">تتبع</button>
+  <input id="tid" placeholder="MR-2026-001">
+  <button onclick="track()">Track</button>
+
+  <p id="msg"></p>
+
+  <div id="result" style="display:none;">
+    <p><b>Tracking ID:</b> <span id="r_tid"></span></p>
+    <p><b>Current Status:</b> <span class="badge" id="r_status"></span></p>
+    <p><b>Last Update:</b> <span id="r_updated"></span></p>
+
+    <div class="timeline">
+      <h3>Status History</h3>
+      <div id="events"></div>
+    </div>
   </div>
-
-  <div id="msg"></div>
-  <div id="result" class="status" style="display:none;"></div>
 </div>
 
 <script>
 async function track(){
   const tid = document.getElementById('tid').value.trim();
   const msg = document.getElementById('msg');
-  const resBox = document.getElementById('result');
+  const result = document.getElementById('result');
   msg.textContent = '';
-  resBox.style.display='none';
+  result.style.display='none';
 
   if(!tid){
-    msg.innerHTML = '<p class="err">الرجاء إدخال رقم التتبع</p>';
+    msg.innerHTML='<span class="err">Please enter a tracking ID</span>';
     return;
   }
 
-  try{
-    const r = await fetch('/api/track/' + encodeURIComponent(tid));
-    const data = await r.json();
-    if(!r.ok) throw new Error(data.error || 'غير موجود');
+  msg.textContent='Searching...';
 
-    resBox.innerHTML = `
-      <b>رقم التتبع:</b> ${data.trackingId}<br>
-      <b>الحالة:</b> ${data.currentStatus}<br>
-      <b>آخر تحديث:</b> ${new Date(data.updatedAt).toLocaleString()}
-    `;
-    resBox.style.display='block';
+  try{
+    const res = await fetch(`/api/track/${encodeURIComponent(tid)}`);
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Not found');
+
+    document.getElementById('r_tid').textContent=data.trackingId;
+    document.getElementById('r_status').textContent=data.currentStatus;
+    document.getElementById('r_updated').textContent=
+      new Date(data.updatedAt).toLocaleString();
+
+    const events=document.getElementById('events');
+    events.innerHTML='';
+    data.events.forEach(e=>{
+      const div=document.createElement('div');
+      div.className='item';
+      div.innerHTML=`<b>${e.status}</b><br>
+        <small>${new Date(e.createdAt).toLocaleString()}</small><br>
+        ${e.note || ''}`;
+      events.appendChild(div);
+    });
+
+    msg.textContent='';
+    result.style.display='block';
   }catch(e){
-    msg.innerHTML = '<p class="err">❌ لم يتم العثور على الشحنة</p>';
+    msg.innerHTML=`<span class="err">${e.message}</span>`;
   }
 }
 </script>
 
 </body>
 </html>
+
+
