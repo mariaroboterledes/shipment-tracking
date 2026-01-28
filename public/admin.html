@@ -1,6 +1,170 @@
-shipment-tracking/
- ├─ package.json
- ├─ server.js
- └─ public/
-     ├─ track.html
-     └─ admin.html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Admin Panel | Shipment Tracking</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial, sans-serif; background:#f5f6f8; padding:20px; }
+    .box {
+      max-width:900px; margin:auto; background:#fff; padding:20px;
+      border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08);
+    }
+    h2 { margin-top:0; }
+    input, textarea, button {
+      width:100%; padding:12px; font-size:15px; margin-top:6px;
+    }
+    button {
+      background:#222; color:#fff; border:none; border-radius:6px;
+      cursor:pointer;
+    }
+    button:hover { opacity:.9; }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .msg { margin-top:10px; }
+    .err { color:#b00020; }
+    .ok { color:#0a7a0a; }
+    hr { margin:25px 0; }
+  </style>
+</head>
+<body>
+
+<div class="box">
+
+  <h2>🔐 Shipment Tracking – Admin Panel</h2>
+
+  <!-- LOGIN -->
+  <div id="loginBox">
+    <h3>Admin Login</h3>
+
+    <label>Email</label>
+    <input id="email" placeholder="admin@company.com">
+
+    <label>Password</label>
+    <input id="password" type="password">
+
+    <button onclick="login()">Login</button>
+    <div id="loginMsg" class="msg"></div>
+  </div>
+
+  <!-- PANEL -->
+  <div id="panel" style="display:none;">
+    <hr>
+
+    <h3>➕ Create New Shipment</h3>
+    <div class="row">
+      <div>
+        <label>Tracking ID</label>
+        <input id="new_tid" placeholder="MR-2026-001">
+      </div>
+      <div>
+        <label>Initial Status</label>
+        <input id="new_status" placeholder="Order received">
+      </div>
+    </div>
+
+    <label>Note</label>
+    <textarea id="new_note" rows="3"></textarea>
+
+    <button onclick="createShipment()">Create Shipment</button>
+
+    <hr>
+
+    <h3>🔄 Add Shipment Update</h3>
+    <div class="row">
+      <div>
+        <label>Tracking ID</label>
+        <input id="up_tid" placeholder="MR-2026-001">
+      </div>
+      <div>
+        <label>New Status</label>
+        <input id="up_status" placeholder="Left warehouse">
+      </div>
+    </div>
+
+    <label>Note</label>
+    <textarea id="up_note" rows="3"></textarea>
+
+    <button onclick="addUpdate()">Add Update</button>
+
+    <div id="panelMsg" class="msg"></div>
+  </div>
+
+</div>
+
+<script>
+async function login(){
+  const msg = document.getElementById('loginMsg');
+  msg.textContent = 'Checking credentials...';
+
+  try{
+    const res = await fetch('/api/admin/login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        email:document.getElementById('email').value,
+        password:document.getElementById('password').value
+      })
+    });
+
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Login failed');
+
+    document.getElementById('loginBox').style.display='none';
+    document.getElementById('panel').style.display='block';
+    msg.textContent='';
+  }catch(e){
+    msg.innerHTML = `<span class="err">${e.message}</span>`;
+  }
+}
+
+async function createShipment(){
+  const msg = document.getElementById('panelMsg');
+  msg.textContent='Creating shipment...';
+
+  try{
+    const res = await fetch('/api/admin/create',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        trackingId:document.getElementById('new_tid').value,
+        status:document.getElementById('new_status').value,
+        note:document.getElementById('new_note').value
+      })
+    });
+
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error);
+
+    msg.innerHTML = `<span class="ok">✅ Shipment created successfully</span>`;
+  }catch(e){
+    msg.innerHTML = `<span class="err">${e.message}</span>`;
+  }
+}
+
+async function addUpdate(){
+  const msg = document.getElementById('panelMsg');
+  msg.textContent='Adding update...';
+
+  try{
+    const res = await fetch('/api/admin/update',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        trackingId:document.getElementById('up_tid').value,
+        status:document.getElementById('up_status').value,
+        note:document.getElementById('up_note').value
+      })
+    });
+
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error);
+
+    msg.innerHTML = `<span class="ok">✅ Update added successfully</span>`;
+  }catch(e){
+    msg.innerHTML = `<span class="err">${e.message}</span>`;
+  }
+}
+</script>
+
+</body>
+</html>
