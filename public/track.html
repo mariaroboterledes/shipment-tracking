@@ -1,6 +1,64 @@
-shipment-tracking/
- ├─ package.json
- ├─ server.js
- └─ public/
-     ├─ track.html   ✅
-     └─ admin.html   ✅
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>تتبع الشحنة | Maria Roboter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial, sans-serif; background:#f6f7f9; padding:20px; }
+    .box { max-width:700px; margin:auto; background:#fff; padding:20px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08); }
+    input, button { padding:12px; font-size:16px; }
+    input { width:70%; }
+    button { cursor:pointer; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; }
+    .status { margin-top:20px; padding:12px; border-radius:8px; background:#f1f1f1; }
+    .err { color:#b00020; }
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <h2>🔍 تتبع الشحنة</h2>
+  <p>أدخل رقم التتبع الخاص بك:</p>
+
+  <div class="row">
+    <input id="tid" placeholder="MR-2026-001">
+    <button onclick="track()">تتبع</button>
+  </div>
+
+  <div id="msg"></div>
+  <div id="result" class="status" style="display:none;"></div>
+</div>
+
+<script>
+async function track(){
+  const tid = document.getElementById('tid').value.trim();
+  const msg = document.getElementById('msg');
+  const resBox = document.getElementById('result');
+  msg.textContent = '';
+  resBox.style.display='none';
+
+  if(!tid){
+    msg.innerHTML = '<p class="err">الرجاء إدخال رقم التتبع</p>';
+    return;
+  }
+
+  try{
+    const r = await fetch('/api/track/' + encodeURIComponent(tid));
+    const data = await r.json();
+    if(!r.ok) throw new Error(data.error || 'غير موجود');
+
+    resBox.innerHTML = `
+      <b>رقم التتبع:</b> ${data.trackingId}<br>
+      <b>الحالة:</b> ${data.currentStatus}<br>
+      <b>آخر تحديث:</b> ${new Date(data.updatedAt).toLocaleString()}
+    `;
+    resBox.style.display='block';
+  }catch(e){
+    msg.innerHTML = '<p class="err">❌ لم يتم العثور على الشحنة</p>';
+  }
+}
+</script>
+
+</body>
+</html>
