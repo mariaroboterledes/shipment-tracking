@@ -6,11 +6,11 @@ import path from "path";
 import { fileURLToPath } from "url";
 import crypto from "crypto";
 
-// ====== إعداد المسارات ======
+// ====== Paths ======
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ====== إعداد التطبيق ======
+// ====== App ======
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -18,31 +18,23 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
-// ====== إعدادات الإدارة (غيّرها لاحقًا) ======
-app.post("/api/admin/login", (req, res) => {
-  const { email, password } = req.body;
+// ====== BASE URL (OPTIONAL: for generating full links) ======
+const BASE_URL = process.env.BASE_URL || "https://shipment-tracking-mrj2.onrender.com";
 
-  if (email !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ error: "Invalid username or password" });
-  }
+// ====== ADMIN CREDENTIALS (STATIC) ======
+const ADMIN_USERNAME = "admin";
+const ADMIN_PASSWORD = "Maria@2026";
 
-  const token = `${email}|${sign(email)}`;
-  res.cookie("admin_token", token, {
-    httpOnly: true,
-    sameSite: "lax"
-  });
+// ====== Session secret (keep this) ======
+const SESSION_SECRET = process.env.SESSION_SECRET || "super-secret-key";
 
-  res.json({ ok: true });
-});
-
-
-// ====== قاعدة البيانات (SQLite) ======
+// ====== Database (SQLite) ======
 const db = await open({
   filename: path.join(__dirname, "tracking.db"),
-  driver: sqlite3.Database
+  driver: sqlite3.Database,
 });
 
-// إنشاء الجداول إن لم تكن موجودة
+// Create tables if not exist
 await db.exec(`
 CREATE TABLE IF NOT EXISTS shipments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,31 +52,45 @@ CREATE TABLE IF NOT EXISTS events (
 );
 `);
 
-// ====== أدوات مساعدة ======
+// ===== Helpers =====
 function nowISO() {
   return new Date().toISOString();
 }
 
 function sign(value) {
-  return crypto
-    .createHmac("sha256", SESSION_SECRET)
-    .update(value)
-    .digest("hex");
+  return crypto.createHmac("sha256", SESSION_SECRET).update(value).digest("hex");
 }
 
-// ====== Middleware حماية الإدارة ======
+// ===== Admin guard =====
 function requireAdmin(req, res, next) {
   const token = req.cookies.admin_token;
-  if (!token) return res.status(401).json({ error: "غير مصرح" });
+  if (!token) return res.status(401).json({ error: "Not authorized" });
 
-  const [email, sig] = token.split("|");
-  if (email !== ADMIN_EMAIL) return res.status(401).json({ error: "غير مصرح" });
-  if (sign(email) !== sig) return res.status(401).json({ error: "جلسة غير صالحة" });
+  const [username, sig] = token.split("|");
+  if (username !== ADMIN_USERNAME) return res.status(401).json({ error: "Not authorized" });
+  if (sign(username) !== sig) return res.status(401).json({ error: "Invalid session" });
 
   next();
 }
 
-// ====== API عامة (للعميل) ======
+// ===== Pretty routes (professional URLs) =====
+
+// Open admin login page via /admin/login
+app.get("/admin/login", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
+// Optional: open tracking page via /track
+app.get("/track", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "track.html"));
+});
+
+// Optional: redirect home to tracking page (so base URL isn't blank)
+app.get("/", (req, res) => {
+  res.redirect("/track");
+});
+
+// ===== Public API (customer) =====
 app.get("/api/track/:trackingId", async (req, res) => {
   const trackingId = req.params.trackingId;
 
@@ -94,7 +100,7 @@ app.get("/api/track/:trackingId", async (req, res) => {
   );
 
   if (!shipment) {
-    return res.status(404).json({ error: "رقم التتبع غير موجود" });
+    return res.status(404).json({ error: "Tracking ID not found" });
   }
 
   const events = await db.all(
@@ -102,34 +108,33 @@ app.get("/api/track/:trackingId", async (req, res) => {
     trackingId
   );
 
-  res.json({
-    ...shipment,
-    events
-  });
+  res.json({ ...shipment, events });
 });
 
-// ====== API الإدارة ======
+// ===== Admin API =====
 app.post("/api/admin/login", (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body; // "email" field is used as username in admin.html
 
-  if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+  if (email !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: "Invalid username or password" });
   }
 
   const token = `${email}|${sign(email)}`;
   res.cookie("admin_token", token, {
     httpOnly: true,
-    sameSite: "lax"
+    sameSite: "lax",
+    // secure: true, // Render uses HTTPS. You can enable this later if needed.
   });
 
   res.json({ ok: true });
 });
 
+// Create shipment
 app.post("/api/admin/create", requireAdmin, async (req, res) => {
   const { trackingId, status, note } = req.body;
 
   if (!trackingId || !status) {
-    return res.status(400).json({ error: "Tracking ID والحالة مطلوبة" });
+    return res.status(400).json({ error: "Tracking ID and status are required" });
   }
 
   try {
@@ -148,26 +153,26 @@ app.post("/api/admin/create", requireAdmin, async (req, res) => {
       nowISO()
     );
 
-    res.json({ ok: true });
+    // Full customer link (optional)
+    const trackingLink = `${BASE_URL}/track.html?tid=${encodeURIComponent(trackingId)}`;
+
+    res.json({ ok: true, trackingLink });
   } catch (e) {
-    res.status(400).json({ error: "Tracking ID موجود مسبقًا" });
+    res.status(400).json({ error: "Tracking ID already exists" });
   }
 });
 
+// Add update
 app.post("/api/admin/update", requireAdmin, async (req, res) => {
   const { trackingId, status, note } = req.body;
 
   if (!trackingId || !status) {
-    return res.status(400).json({ error: "Tracking ID والحالة مطلوبة" });
+    return res.status(400).json({ error: "Tracking ID and status are required" });
   }
 
-  const shipment = await db.get(
-    "SELECT id FROM shipments WHERE trackingId = ?",
-    trackingId
-  );
-
+  const shipment = await db.get("SELECT id FROM shipments WHERE trackingId = ?", trackingId);
   if (!shipment) {
-    return res.status(404).json({ error: "الشحنة غير موجودة" });
+    return res.status(404).json({ error: "Shipment not found" });
   }
 
   await db.run(
@@ -188,7 +193,12 @@ app.post("/api/admin/update", requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ====== تشغيل السيرفر ======
+// ===== Start server =====
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Admin (pretty): ${BASE_URL}/admin/login`);
+  console.log(`Admin (file):   ${BASE_URL}/admin.html`);
+  console.log(`Track (file):   ${BASE_URL}/track.html`);
+  console.log(`Track (pretty): ${BASE_URL}/track`);
 });
+
